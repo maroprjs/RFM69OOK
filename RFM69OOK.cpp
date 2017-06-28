@@ -36,6 +36,11 @@ volatile byte RFM69OOK::_mode;  // current transceiver state
 volatile int RFM69OOK::RSSI; 	// most accurate RSSI during reception (closest to the reception)
 RFM69OOK* RFM69OOK::selfPointer;
 
+RFM69OOK::~RFM69OOK() {
+	// TODO Auto-generated destructor stub
+
+}
+
 bool RFM69OOK::initialize()
 {
   const byte CONFIG[][2] =
@@ -64,6 +69,18 @@ bool RFM69OOK::initialize()
 
   selfPointer = this;
   return true;
+}
+
+void RFM69OOK::reset()//MARO 7.2.2. Manual Reset
+{
+	pinMode(_rstPin, OUTPUT);
+	delay(10);
+	digitalWrite(_rstPin,LOW);
+	delay(10);
+	digitalWrite(_rstPin,HIGH);
+	delay(150);
+	digitalWrite(_rstPin,LOW);
+	delay(7);
 }
 
 // Poll for OOK signal
@@ -252,8 +269,10 @@ void RFM69OOK::writeReg(byte addr, byte value)
 void RFM69OOK::select() {
   noInterrupts();
   // save current SPI settings
+#ifndef ESP8266 //(MARO) TODO
   _SPCR = SPCR;
   _SPSR = SPSR;
+#endif
   // set RFM69 SPI settings
   SPI.setDataMode(SPI_MODE0);
   SPI.setBitOrder(MSBFIRST);
@@ -265,8 +284,10 @@ void RFM69OOK::select() {
 void RFM69OOK::unselect() {
   digitalWrite(_slaveSelectPin, HIGH);
   // restore SPI settings to what they were before talking to RFM69
+#ifndef ESP8266 //(MARO) TODO
   SPCR = _SPCR;
   SPSR = _SPSR;
+#endif
   interrupts();
 }
 
