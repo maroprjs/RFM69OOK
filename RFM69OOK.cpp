@@ -36,34 +36,53 @@ volatile byte RFM69OOK::_mode;  // current transceiver state
 volatile int RFM69OOK::RSSI; 	// most accurate RSSI during reception (closest to the reception)
 RFM69OOK* RFM69OOK::selfPointer;
 
+RFM69OOK::~RFM69OOK() {
+	// TODO Auto-generated destructor stub
+
+}
+
 bool RFM69OOK::initialize()
 {
   const byte CONFIG[][2] =
   {
     /* 0x01 */ { REG_OPMODE, RF_OPMODE_SEQUENCER_OFF | RF_OPMODE_LISTEN_OFF | RF_OPMODE_STANDBY },
     /* 0x02 */ { REG_DATAMODUL, RF_DATAMODUL_DATAMODE_CONTINUOUSNOBSYNC | RF_DATAMODUL_MODULATIONTYPE_OOK | RF_DATAMODUL_MODULATIONSHAPING_00 }, // no shaping
-    /* 0x03 */ { REG_BITRATEMSB, 0x03}, // bitrate: 32768 Hz
-    /* 0x04 */ { REG_BITRATELSB, 0xD1},
+    /* 0x03 */ { REG_BITRATEMSB, 0x4B}, //bitrate: 1,656kbit(604us) 4b7c///bitrate: 32768 Hz 0x03 0D1
+    /* 0x04 */ { REG_BITRATELSB, 0x7C},
     /* 0x19 */ { REG_RXBW, RF_RXBW_DCCFREQ_010 | RF_RXBW_MANT_24 | RF_RXBW_EXP_4}, // BW: 10.4 kHz
     /* 0x1B */ { REG_OOKPEAK, RF_OOKPEAK_THRESHTYPE_PEAK | RF_OOKPEAK_PEAKTHRESHSTEP_000 | RF_OOKPEAK_PEAKTHRESHDEC_000 },
     /* 0x1D */ { REG_OOKFIX, 6 }, // Fixed threshold value (in dB) in the OOK demodulator
-    /* 0x29 */ { REG_RSSITHRESH, 140 }, // RSSI threshold in dBm = -(REG_RSSITHRESH / 2)
+    /* 0x29 */ { REG_RSSITHRESH, 140 }, //140 RSSI threshold in dBm = -(REG_RSSITHRESH / 2)
     /* 0x6F */ { REG_TESTDAGC, RF_DAGC_IMPROVED_LOWBETA0 }, // run DAGC continuously in RX mode, recommended default for AfcLowBetaOn=0
     {255, 0}
   };
 
   pinMode(_slaveSelectPin, OUTPUT);
+  SPI.setFrequency(1000000);
   SPI.begin();
 
   for (byte i = 0; CONFIG[i][0] != 255; i++)
     writeReg(CONFIG[i][0], CONFIG[i][1]);
 
-  setHighPower(_isRFM69HW); // called regardless if it's a RFM69W or RFM69HW
+  //setHighPower(_isRFM69HW); // called regardless if it's a RFM69W or RFM69HW
+  setHighPower(0);
   setMode(RF69OOK_MODE_STANDBY);
     while ((readReg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00); // Wait for ModeReady
 
   selfPointer = this;
   return true;
+}
+
+void RFM69OOK::reset()//MARO 7.2.2. Manual Reset
+{
+	pinMode(_rstPin, OUTPUT);
+	delay(10);
+	digitalWrite(_rstPin,LOW);
+	delay(10);
+	digitalWrite(_rstPin,HIGH);
+	delay(150);
+	digitalWrite(_rstPin,LOW);
+	delay(7);
 }
 
 // Poll for OOK signal
@@ -75,7 +94,10 @@ bool RFM69OOK::poll()
 // Send a 1 or 0 signal in OOK mode
 void RFM69OOK::send(bool signal)
 {
-  digitalWrite(_interruptPin, signal);
+
+		digitalWrite(_interruptPin, signal);
+
+
 }
 
 // Turn the radio into transmission mode
@@ -215,8 +237,8 @@ void RFM69OOK::sleep() {
 // this results in a "weaker" transmitted signal, and directly results in a lower RSSI at the receiver
 void RFM69OOK::setPowerLevel(byte powerLevel)
 {
-  _powerLevel = powerLevel;
-  writeReg(REG_PALEVEL, (readReg(REG_PALEVEL) & 0xE0) | (_powerLevel > 31 ? 31 : _powerLevel));
+	 _powerLevel = powerLevel;
+	  writeReg(REG_PALEVEL, (readReg(REG_PALEVEL) & 0xE0) | (_powerLevel > 31 ? 31 : _powerLevel));
 }
 
 void RFM69OOK::isr0() { selfPointer->interruptHandler(); }
@@ -252,8 +274,10 @@ void RFM69OOK::writeReg(byte addr, byte value)
 void RFM69OOK::select() {
   noInterrupts();
   // save current SPI settings
+#ifndef ESP8266
   _SPCR = SPCR;
   _SPSR = SPSR;
+#endif
   // set RFM69 SPI settings
   SPI.setDataMode(SPI_MODE0);
   SPI.setBitOrder(MSBFIRST);
@@ -265,8 +289,10 @@ void RFM69OOK::select() {
 void RFM69OOK::unselect() {
   digitalWrite(_slaveSelectPin, HIGH);
   // restore SPI settings to what they were before talking to RFM69
+#ifndef ESP8266
   SPCR = _SPCR;
   SPSR = _SPSR;
+#endif
   interrupts();
 }
 

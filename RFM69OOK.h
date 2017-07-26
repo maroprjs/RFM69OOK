@@ -32,7 +32,8 @@
 #define RFM69OOK_h
 #include <Arduino.h>            //assumes Arduino IDE v1.0 or greater
 
-#define RF69OOK_SPI_CS  SS // SS is the SPI slave select pin, for instance D10 on atmega328
+//#define RF69OOK_SPI_CS  SS // SS is the SPI slave select pin, for instance D10 on atmega328
+#define RF69OOK_SPI_CS  16 // SS is the SPI slave select pin, for instance D10 on atmega328
 
 // INT0 on AVRs should be connected to RFM69's DIO0 (ex on Atmega328 it's D2, on Atmega644/1284 it's D2)
 #if defined(__AVR_ATmega168__) || defined(__AVR_ATmega328P__) || defined(__AVR_ATmega88) || defined(__AVR_ATmega8__) || defined(__AVR_ATmega88__)
@@ -44,6 +45,10 @@
 #elif defined(__AVR_ATmega32U4__)
   #define RF69OOK_IRQ_PIN          3
   #define RF69OOK_IRQ_NUM          0
+#else	//ESP8266
+  #define RF69OOK_IRQ_PIN          4 //one of the unused I2C pins
+  #define RST_PIN				   5
+  #define RF69OOK_IRQ_NUM          digitalPinToInterrupt(RF69OOK_IRQ_PIN)
 #endif
 
 #define RF69OOK_MODE_SLEEP       0 // XTAL OFF
@@ -61,14 +66,16 @@ class RFM69OOK {
     static volatile int RSSI; //most accurate RSSI during reception (closest to the reception)
     static volatile byte _mode; //should be protected?
 
-    RFM69OOK(byte slaveSelectPin=RF69OOK_SPI_CS, byte interruptPin=RF69OOK_IRQ_PIN, bool isRFM69HW=false, byte interruptNum=RF69OOK_IRQ_NUM) {
+    RFM69OOK(byte slaveSelectPin=RF69OOK_SPI_CS, byte interruptPin=RF69OOK_IRQ_PIN,byte rstPin = RST_PIN, bool isRFM69HW=false, byte interruptNum=RF69OOK_IRQ_NUM) {
       _slaveSelectPin = slaveSelectPin;
       _interruptPin = interruptPin;
       _interruptNum = interruptNum;
+      _rstPin = rstPin;
       _mode = RF69OOK_MODE_STANDBY;
       _powerLevel = 31;
       _isRFM69HW = isRFM69HW;
     }
+    virtual ~RFM69OOK();
 
     bool initialize();
     uint32_t getFrequency();
@@ -100,6 +107,7 @@ class RFM69OOK {
 	void setRSSIThreshold(int8_t rssi);
 	void setFixedThreshold(uint8_t threshold);
 	void setSensitivityBoost(uint8_t value);
+	void reset();
 
     void select();
     void unselect();
@@ -111,6 +119,7 @@ class RFM69OOK {
     static RFM69OOK* selfPointer;
     byte _slaveSelectPin;
     byte _interruptPin;
+    byte _rstPin;
     byte _interruptNum;
     byte _powerLevel;
     bool _isRFM69HW;

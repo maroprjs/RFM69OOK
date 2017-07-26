@@ -1,5 +1,10 @@
 ### RFM69OOK
 
+note Dec 2016: maro:
+ * -in RFM69OOK.h added interrupt pins defintiions for ESP12
+ * -in RFM69OOK.c added exclude #defs so ESP12 compiles;spi freqency to 4Mhz)
+
+-----------------------------
 This project is an attempt to create a general OOK transceiver library, primarily for LowPowerLab's Moteino (http://lowpowerlab.com/moteino/). It should also work in many other Arduino derivatives that make use of Hope RF's RFM69 radio transceiver modules.
 
 Code is originally based on https://github.com/LowPowerLab/RFM69 by LowPowerLab, with many parts removed, completely rewritten or amended for operation in OOK mode.
